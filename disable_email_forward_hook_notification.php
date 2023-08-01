@@ -5,7 +5,7 @@
  * @version    1.0.0
  * @package    Disable Email Forwards
  * @author     Vudubond
- * @url        
+ * @url
  * @copyright
  * @license    GNU/GPL license: https://www.gnu.org/copyleft/gpl.html
  */
@@ -129,7 +129,7 @@ function add($input, $api_type)
     $api_function = 'uapi' === $api_type ? 'UAPI::Email::add_forwarder' : 'Api2::Email::addforward';
     $input_context = $input['context'];
     $input_args = $input['data']['args'];
-    //$email_from = $input_args['email'];
+    $email_from = $input_args['email'];
     $email_to = trim($input_args['fwdemail']);
     $domain = $input_args['domain'];
     $action_api = $input_context['event'];
@@ -170,7 +170,7 @@ else {
      // Send notification email when a forwarder is added
             $recipient = 'root'; // Change this to the email address where you want to receive notifications
             $subject = 'Forwarder Added';
-            $body = "A forwarder has been added for domain '{$domain}'. Forwarded email address: '{$sanitized_email_to}'.";
+            $body = "A forwarder has been added for domain '{$email_from}'. Forwarded email address: '{$sanitized_email_to}'.";
             send_notification_email($recipient, $subject, $body);
 }
 
