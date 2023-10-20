@@ -169,8 +169,9 @@ else {
      $message = '';
      // Send notification email when a forwarder is added
             $recipient = 'root'; // Change this to the email address where you want to receive notifications
-            $subject = 'Forwarder Added';
-            $body = "A forwarder has been added for domain '{$email_from}'. Forwarded email address: '{$sanitized_email_to}'.";
+            $hostname = gethostname();
+            $subject = "Forwarder Added on $hostname";
+            $body = "A forwarder has been added for domain '{$email_from}' @ '{$domain}'. Forwarded email address: '{$sanitized_email_to}'.";
             send_notification_email($recipient, $subject, $body);
 }
 
