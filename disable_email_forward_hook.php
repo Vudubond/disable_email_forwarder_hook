@@ -2,15 +2,15 @@
 <?php
 
 /**
- * @version    1.0.0
- * @package    Disable Email Forwards
+ * @version    2.0.0
+ * @package    Disable Email Filters
  * @author     Vudubond
- * @url        
+ * @url
  * @copyright
  * @license    GNU/GPL license: https://www.gnu.org/copyleft/gpl.html
  */
 
-// file - /usr/local/src/vudubond/disable_email_forward_hook.php
+// file - /usr/local/src/vudubond2/disable_email_filter_hook.php
 
 // Save hook action scripts in the /usr/local/cpanel/3rdparty/bin directory.
 // Scripts must have root:root ownership and 755 permissions.
@@ -27,18 +27,18 @@
 // Debug Mode option in the Development section of WHM's Tweak Settings (WHM >> Home >> Server Configuration >> Tweak Settings)
 
 // Install
-// mkdir /usr/local/src/vudubond
-// cd /usr/local/src/vudubond;
-// https://raw.githubusercontent.com/Vudubond/disable_email_forwarder_hook/disable_email_forward_hook.php
+// mkdir /usr/local/src/vudubond2
+// cd /usr/local/src/vudubond2;
+// https://raw.githubusercontent.com/Vudubond/disable_email_filter_hook/master/disable_email_filter_hook.php
 // copy file to folder
-// chown root:root /usr/local/src/vudubond/disable_email_forward_hook.php;
-// chmod 755 /usr/local/src/vudubond/disable_email_forward_hook.php;
-// /usr/local/cpanel/bin/manage_hooks add script /usr/local/src/vudubond/disable_email_forward_hook.php
+// chown root:root /usr/local/src/vudubond2/disable_email_filter_hook.php;
+// chmod 755 /usr/local/src/vudubond2/disable_email_filter_hook.php;
+// /usr/local/cpanel/bin/manage_hooks add script /usr/local/src/vudubond2/disable_email_filter_hook.php
 // create and populate the file /etc/forwarder_blocked_domains.txt
 // touch /etc/forwarder_blocked_domains.txt
 
 // Uninstall
-// /usr/local/cpanel/bin/manage_hooks delete script /usr/local/src/vudubond/disable_email_forward_hook.php
+// /usr/local/cpanel/bin/manage_hooks delete script /usr/local/src/vudubond2/disable_email_filter_hook.php
 
 // Embed hook attribute information
 function describe()
@@ -46,18 +46,18 @@ function describe()
     $api2_add_hook = array(
         'blocking' => 1,
         'category' => 'Cpanel',
-        'event'    => 'Api2::Email::addforward',
+        'event'    => 'Api2::Email::storefilter',
         'stage'    => 'pre',
-        'hook'     => '/usr/local/src/vudubond/disable_email_forward_hook.php --add_api2',
+        'hook'     => '/usr/local/src/vudubond2/disable_email_filter_hook.php --add_api2',
         'exectype' => 'script',
     );
 
     $uapi_add_hook = array(
         'blocking' => 1,
         'category' => 'Cpanel',
-        'event'    => 'UAPI::Email::add_forwarder',
+        'event'    => 'UAPI::Email::store_filter',
         'stage'    => 'pre',
-        'hook'     => '/usr/local/src/vudubond/disable_email_forward_hook.php --add_uapi',
+        'hook'     => '/usr/local/src/vudubond2/disable_email_filter_hook.php --add_uapi',
         'exectype' => 'script',
     );
 
@@ -115,64 +115,40 @@ function add_api2($input = array())
 
 function add($input, $api_type)
 {
-
-    $api_function = 'uapi' === $api_type ? 'UAPI::Email::add_forwarder' : 'Api2::Email::addforward';
+    $api_function = 'uapi' === $api_type ? 'UAPI::Email::store_filter' : 'Api2::Email::storefilter';
     $input_context = $input['context'];
     $input_args = $input['data']['args'];
-    //$email_from = $input_args['email'];
-    $email_to = trim($input_args['fwdemail']);
-    $domain = $input_args['domain'];
+    $domain = $input_args['account'];
     $action_api = $input_context['event'];
-    $action_forward = $input_args['fwdopt'];
+    $action_add = 'deliver'; // Assuming all destinations are for delivery
 
-    // $result = Set success boolean value
-    // 1 — Success
-    // 0 — Failure
+    // Initialize variables for result and message
+    $result = 1; // Assume success initially
+    $message = '';
 
-    // $message = This string is a reason for $result.
-    // To block the hook event on failure, you must set the blocking value to 1
-    // in the describe() method and include BAILOUT in the failure message. If
-    // the message does not include BAILOUT, the system will not block the event.
+    // Iterate over destination variables
+    for ($i = 1; isset($input_args["dest$i"]); $i++) {
+        $email_to = trim($input_args["dest$i"]);
 
-    // If forwarding destination does not end in the same domain as the account, deny it.
-    if ($api_function === $action_api && 'fwd' === $action_forward) {
-        // Is valid email?
-        if (filter_var($email_to, FILTER_VALIDATE_EMAIL)) {
-            // We might echo the domain, so make sure it's clean first
-            $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
-
-            // Split on @ and return last value of array (the domain)
-            $email_to_domain = array_pop(explode('@', $sanitized_email_to));
-
-            // Return a boolean if the domain matches
-            //$result = ($domain === $email_to_domain) ? 1 : 0;
-            //$message = 0 === $result ? "Forwarding to external domains not allowed, {$domain} is not equal to {$email_to_domain}." : '';
-                // Populate list of bad domain names
-$baddomains = explode("\n", file_get_contents('/etc/forwarder_blocked_domains.txt'));
-
-if (in_array($sanitized_email_to, $baddomains)) {
-     $result = 0;
-     $message = "Forwarding to {$sanitized_email_to} is not allowed.";
-}
-else {
-     $result = 1;
-     $message = '';
-}
-
-
-        } else {
-            // invalid email, fail
-            $result = 0;
-            $message = "Invalid email address.";
+        // Check if the email is valid
+        if (!filter_var($email_to, FILTER_VALIDATE_EMAIL)) {
+            //$result = 0;
+            //$message .= "Invalid email address for destination $i.\n";
+            continue; // Move to the next destination
         }
-    } else {
-        // we're not filtering: fail, blackhole, pipe, system
-        $result = 1;
-        $message = "";
-    }
 
-    // On error, use:
-    // throw new RuntimeException("BAILOUT $message");
+        // Check if the destination domain matches the account domain
+        $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
+        $email_to_domain = array_pop(explode('@', $sanitized_email_to));
+
+        // Check if the destination domain is allowed
+        $baddomains = explode("\n", file_get_contents('/etc/forwarder_blocked_domains.txt'));
+        if (in_array($sanitized_email_to, $baddomains)) {
+            $result = 0;
+            $message .= "Forwarding to $sanitized_email_to is not allowed for destination $i.\n";
+            break;
+        }
+    }
 
     // Return the hook result and message
     return array($result, $message);
@@ -196,6 +172,6 @@ if (in_array('--describe', $switches)) {
     echo "$result $message";
     exit;
 } else {
-    echo '0 vudubond/disable_email_forward_hook.php needs a valid switch';
+    echo '0 vudubond2/disable_email_forward_hook.php needs a valid switch';
     exit(1);
 }
