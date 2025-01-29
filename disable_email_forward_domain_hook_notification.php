@@ -167,7 +167,7 @@ function add($input, $api_type)
 if (in_array($sanitized_email_to, $baddomains) || in_array($email_to_domain, $baddomains)) {
                 $result = 0;
                 $message = "Forwarding to {$sanitized_email_to} ({$email_to_domain}) is not allowed.";
-else {
+} else {
      $result = 1;
      $message = '';
      // Send notification email when a forwarder is added
