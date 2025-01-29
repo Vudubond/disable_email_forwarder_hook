@@ -152,7 +152,7 @@ function add($input, $api_type)
             $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
 
             // Split on @ and return last value of array (the domain)
-            $email_to_parts = array_pop(explode('@', $sanitized_email_to));
+            $email_to_parts = explode('@', $sanitized_email_to);
 
             // Block to domain as well          
             $email_to_domain = array_pop($email_to_parts);
@@ -164,9 +164,12 @@ function add($input, $api_type)
         $baddomains = array_map('trim', file('/etc/forwarder_blocked_domains.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
 
 // Check if full email OR domain is blocked
-if (in_array($sanitized_email_to, $baddomains) || in_array($email_to_domain, $baddomains)) {
-                $result = 0;
-                $message = "Forwarding to {$sanitized_email_to} ({$email_to_domain}) is not allowed.";
+if (in_array($sanitized_email_to, $baddomains)) {
+    $result = 0;
+    $message = "Forwarding to {$sanitized_email_to} is not allowed.";
+} elseif (in_array($email_to_domain, $baddomains)) {
+    $result = 0;
+    $message = "Forwarding to any address at {$email_to_domain} is not allowed.";
 } else {
      $result = 1;
      $message = '';
