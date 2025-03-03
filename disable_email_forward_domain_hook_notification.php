@@ -169,7 +169,7 @@ if (in_array($sanitized_email_to, $baddomains)) {
     $message = "Forwarding to {$sanitized_email_to} is not allowed.";
 } elseif (in_array($email_to_domain, $baddomains)) {
     $result = 0;
-    $message = "Forwarding to any address at {$email_to_domain} is not allowed.";
+    $message .= "Forwarding to {$sanitized_email_to} is blocked because forwarding to the domain ({$email_to_domain}) is not allowed.\n\nDetails at: https://www.clausweb.ro/politica-antispam.php";
 } else {
      $result = 1;
      $message = '';
