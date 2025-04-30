@@ -138,7 +138,8 @@ function add($input, $api_type)
         }
 
         // Check if the destination domain matches the account domain
-        $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
+        // $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
+        $sanitized_email_to = strtolower(filter_var($email_to, FILTER_SANITIZE_EMAIL));
         $email_to_domain = array_pop(explode('@', $sanitized_email_to));
 
         // Check if the destination domain is allowed
