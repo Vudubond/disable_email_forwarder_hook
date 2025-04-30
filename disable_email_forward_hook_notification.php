@@ -149,7 +149,8 @@ function add($input, $api_type)
         // Is valid email?
         if (filter_var($email_to, FILTER_VALIDATE_EMAIL)) {
             // We might echo the domain, so make sure it's clean first
-            $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
+            // $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
+            $sanitized_email_to = strtolower(filter_var($email_to, FILTER_SANITIZE_EMAIL));
 
             // Split on @ and return last value of array (the domain)
             $email_to_domain = array_pop(explode('@', $sanitized_email_to));
