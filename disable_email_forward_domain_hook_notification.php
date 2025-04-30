@@ -149,7 +149,7 @@ function add($input, $api_type)
         // Is valid email?
         if (filter_var($email_to, FILTER_VALIDATE_EMAIL)) {
             // We might echo the domain, so make sure it's clean first
-            $sanitized_email_to = filter_var($email_to, FILTER_SANITIZE_EMAIL);
+            $sanitized_email_to = strtolower(filter_var($email_to, FILTER_SANITIZE_EMAIL));
 
             // Split on @ and return last value of array (the domain)
             $email_to_parts = explode('@', $sanitized_email_to);
@@ -161,7 +161,8 @@ function add($input, $api_type)
             //$result = ($domain === $email_to_domain) ? 1 : 0;
             //$message = 0 === $result ? "Forwarding to external domains not allowed, {$domain} is not equal to {$email_to_domain}." : '';
                 // Populate list of bad domain names
-        $baddomains = array_map('trim', file('/etc/forwarder_blocked_domains.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+        // $baddomains = array_map('trim', file('/etc/forwarder_blocked_domains.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+        $baddomains = array_map('strtolower', array_map('trim', file('/etc/forwarder_blocked_domains.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)));
 
 // Check if full email OR domain is blocked
 if (in_array($sanitized_email_to, $baddomains)) {
