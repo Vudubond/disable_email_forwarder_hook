@@ -2,7 +2,7 @@
 <?php
 
 /**
- * @version    1.0.0
+ * @version    1.1.0
  * @package    Disable Email Forwards
  * @author     Vudubond
  * @url
@@ -125,81 +125,67 @@ function send_notification_email($recipient, $subject, $body)
 
 function add($input, $api_type)
 {
-
     $api_function = 'uapi' === $api_type ? 'UAPI::Email::add_forwarder' : 'Api2::Email::addforward';
     $input_context = $input['context'];
     $input_args = $input['data']['args'];
     $email_from = $input_args['email'];
-    $email_to = trim($input_args['fwdemail']);
+    $email_to_raw = $input_args['fwdemail'];
     $domain = $input_args['domain'];
     $action_api = $input_context['event'];
     $action_forward = $input_args['fwdopt'];
 
-    // $result = Set success boolean value
-    // 1 — Success
-    // 0 — Failure
+    $result = 1;
+    $message = '';
 
-    // $message = This string is a reason for $result.
-    // To block the hook event on failure, you must set the blocking value to 1
-    // in the describe() method and include BAILOUT in the failure message. If
-    // the message does not include BAILOUT, the system will not block the event.
-
-    // If forwarding destination does not end in the same domain as the account, deny it.
+    // Only act on email forwarders
     if ($api_function === $action_api && 'fwd' === $action_forward) {
-        // Is valid email?
-        if (filter_var($email_to, FILTER_VALIDATE_EMAIL)) {
-            // We might echo the domain, so make sure it's clean first
-            $sanitized_email_to = strtolower(filter_var($email_to, FILTER_SANITIZE_EMAIL));
-
-            // Split on @ and return last value of array (the domain)
-            $email_to_parts = explode('@', $sanitized_email_to);
-
-            // Block to domain as well          
-            $email_to_domain = array_pop($email_to_parts);
-          
-            // Return a boolean if the domain matches
-            //$result = ($domain === $email_to_domain) ? 1 : 0;
-            //$message = 0 === $result ? "Forwarding to external domains not allowed, {$domain} is not equal to {$email_to_domain}." : '';
-                // Populate list of bad domain names
-        // $baddomains = array_map('trim', file('/etc/forwarder_blocked_domains.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
         $baddomains = array_map('strtolower', array_map('trim', file('/etc/forwarder_blocked_domains.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)));
 
-// Check if full email OR domain is blocked
-if (in_array($sanitized_email_to, $baddomains)) {
-    $result = 0;
-    $message = "Forwarding to {$sanitized_email_to} is not allowed.";
-} elseif (in_array($email_to_domain, $baddomains)) {
-    $result = 0;
-    $message .= "Forwarding to {$sanitized_email_to} is blocked because forwarding to the domain ({$email_to_domain}) is not allowed.\n\nDetails at: https://www.clausweb.ro/politica-antispam.php";
-} else {
-     $result = 1;
-     $message = '';
-     // Send notification email when a forwarder is added
-            $recipient = 'root'; // Change this to the email address where you want to receive notifications
+        // Split on commas for multiple email addresses
+        $forward_addresses = array_map('trim', explode(',', $email_to_raw));
+        $blocked = [];
+
+        foreach ($forward_addresses as $email_to) {
+            if (!filter_var($email_to, FILTER_VALIDATE_EMAIL)) {
+                $result = 0;
+                $message = "Invalid email address: {$email_to}.";
+                break;
+            }
+
+            $sanitized_email_to = strtolower(filter_var($email_to, FILTER_SANITIZE_EMAIL));
+            $email_to_parts = explode('@', $sanitized_email_to);
+            $email_to_domain = array_pop($email_to_parts);
+
+            if (in_array($sanitized_email_to, $baddomains)) {
+                $result = 0;
+                $message = "Forwarding to {$sanitized_email_to} is not allowed.";
+                break;
+            } elseif (in_array($email_to_domain, $baddomains)) {
+                $result = 0;
+                $message = "Forwarding to {$sanitized_email_to} is blocked because forwarding to the domain ({$email_to_domain}) is not allowed.\n\nDetails at: https://www.clausweb.ro/politica-antispam.php";
+                break;
+            }
+        }
+
+        if ($result === 1) {
+            // Send notification once after all are validated
+            $recipient = 'root'; // Change to desired notification email
             $hostname = gethostname();
             $subject = "Forwarder Added on $hostname";
-            $body = "A forwarder has been added for domain '{$email_from}' @ '{$domain}'. Forwarded email address: '{$sanitized_email_to}'.";
+            $forwarded_to = implode(', ', $forward_addresses);
+            $body = "A forwarder has been added for '{$email_from}@{$domain}'.\nForwarded to: {$forwarded_to}";
             send_notification_email($recipient, $subject, $body);
-}
-
-
-        } else {
-            // invalid email, fail
-            $result = 0;
-            $message = "Invalid email address.";
         }
+
     } else {
-        // we're not filtering: fail, blackhole, pipe, system
+        // Not a standard forward, allow
         $result = 1;
         $message = "";
     }
 
-    // On error, use:
-    // throw new RuntimeException("BAILOUT $message");
-
-    // Return the hook result and message
     return array($result, $message);
 }
+
 
 // Any switches passed to this script
 $switches = (count($argv) > 1) ? $argv : array();
